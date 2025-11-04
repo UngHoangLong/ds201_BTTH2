@@ -2,9 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-num_classes = 21
 class LeNet(nn.Module): # nn.Module là base class mà tất cả các mô hình học sâu kế thừa nó.
-    def __init__(self):
+    def __init__(self, num_classes):
         super(LeNet, self).__init__() # Gọi hàm khởi tạo của lớp cha nn.Module
 
         # Lớp 1. 5x5 Conv (6) Input(3,32,32) -> Output(6,28,28)
