@@ -7,7 +7,7 @@ import os
 # Kích thước LeNet-5 mong đợi
 LENET_IMG_SIZE = 32
 random_state = 42
-def get_vinfood_dataloaders_for_LeNet_5(batch_size=64, train_path=None, test_path=None, val_split=0.2):
+def get_vinfood_dataloaders(batch_size=64, train_path=None, test_path=None, val_split=0.2, image_size=32):
     # định nghĩa các phép biến đổi ( transformer )
     data_transformer = transforms.Compose([ # 
         # Thêm dòng này để xử lý ảnh PNG/Palette
