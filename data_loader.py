@@ -6,6 +6,8 @@ import os
 
 # Kích thước LeNet-5 mong đợi
 LENET_IMG_SIZE = 32
+# Kích thước GoogleNet mong đợi
+GOOGLENET_IMG_SIZE = 224
 random_state = 42
 def get_vinfood_dataloaders(batch_size=64, train_path=None, test_path=None, val_split=0.2, image_size=32):
     # định nghĩa các phép biến đổi ( transformer )
@@ -13,7 +15,7 @@ def get_vinfood_dataloaders(batch_size=64, train_path=None, test_path=None, val_
         # Thêm dòng này để xử lý ảnh PNG/Palette
         transforms.Lambda(lambda img: img.convert("RGB")),
         # Thay đổi kích thước ảnh về 32x32
-        transforms.Resize((LENET_IMG_SIZE, LENET_IMG_SIZE)),
+        transforms.Resize((image_size, image_size)),
         # Chuyển ảnh sang Tensor [C,H,W] và scale giá trị pixel về [0.0,1.0]
         transforms.ToTensor(),
         # Vì dữ liệu là hình ảnh tự nhiên nên kế thứ mean và std của ImageNet để chuẩn hoá
