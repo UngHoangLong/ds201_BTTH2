@@ -11,7 +11,7 @@ def get_vinfood_dataloaders_for_LeNet_5(batch_size=64, train_path=None, test_pat
     # định nghĩa các phép biến đổi ( transformer )
     data_transformer = transforms.Compose([ # 
         # Thêm dòng này để xử lý ảnh PNG/Palette
-        transforms.Convert("RGB"),
+        transforms.Lambda(lambda img: img.convert("RGB")),
         # Thay đổi kích thước ảnh về 32x32
         transforms.Resize((LENET_IMG_SIZE, LENET_IMG_SIZE)),
         # Chuyển ảnh sang Tensor [C,H,W] và scale giá trị pixel về [0.0,1.0]
