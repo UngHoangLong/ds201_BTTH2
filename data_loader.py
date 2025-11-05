@@ -10,6 +10,8 @@ random_state = 42
 def get_vinfood_dataloaders_for_LeNet_5(batch_size=64, train_path=None, test_path=None, val_split=0.2):
     # định nghĩa các phép biến đổi ( transformer )
     data_transformer = transforms.Compose([ # 
+        # Thêm dòng này để xử lý ảnh PNG/Palette
+        transforms.Convert("RGB"),
         # Thay đổi kích thước ảnh về 32x32
         transforms.Resize((LENET_IMG_SIZE, LENET_IMG_SIZE)),
         # Chuyển ảnh sang Tensor [C,H,W] và scale giá trị pixel về [0.0,1.0]
@@ -64,21 +66,24 @@ def get_vinfood_dataloaders_for_LeNet_5(batch_size=64, train_path=None, test_pat
         dataset=train_subset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2
+        num_workers=2,
+        persistent_workers=True
     )
 
     val_loader = DataLoader(
         dataset=val_subset,
         batch_size=batch_size,
         shuffle=False, # Không cần shuffle tập valid/test
-        num_workers=2
+        num_workers=2,
+        persistent_workers=True
     )
 
     test_loader = DataLoader(
         dataset=test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=2
+        num_workers=2,
+        persistent_workers=True
     )
 
     print(f"Đã tải data thành công. Tổng cộng {num_classes} lớp.")
