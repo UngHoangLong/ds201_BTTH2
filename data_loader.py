@@ -114,7 +114,7 @@ def get_vinfood_dataloaders_for_HuggingFace(model_name="microsoft/resnet-50", ba
     # Chúng ta sẽ tái tạo lại transform chuẩn của processor
     data_transformer = transforms.Compose([
         transforms.Lambda(lambda img: img.convert("RGB")),
-        transforms.Resize((processor.size['height'], processor.size['width'])),
+        transforms.Resize((processor.crop_size['height'], processor.crop_size['width'])),
         transforms.ToTensor(),
         transforms.Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
