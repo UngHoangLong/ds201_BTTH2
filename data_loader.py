@@ -94,6 +94,21 @@ def get_vinfood_dataloaders(batch_size=64, train_path=None, test_path=None, val_
     return train_loader, val_loader, test_loader, num_classes
 
 
+def collate_safe(batch):
+    """
+    Hàm collate_fn tùy chỉnh để lọc ra các sample bị hỏng (None).
+    """
+    # 1. Lọc ra các sample bị hỏng
+    batch = list(filter(lambda x: x is not None, batch))
+    
+    # 2. Nếu batch không rỗng, gộp (collate) như bình thường
+    if len(batch) > 0:
+        return torch.utils.data.dataloader.default_collate(batch)
+    # 3. Nếu toàn bộ batch đều hỏng, trả về None (hoặc tensor rỗng)
+    else:
+        return None 
+# -------------------
+
 def get_vinfood_dataloaders_for_HuggingFace(model_name="microsoft/resnet-50", batch_size=32, train_path=None, test_path=None, val_split=0.2, random_state=42):
     """
     Hàm này tạo DataLoaders cho VinaFood21
@@ -162,15 +177,18 @@ def get_vinfood_dataloaders_for_HuggingFace(model_name="microsoft/resnet-50", ba
 
     train_loader = DataLoader(
         dataset=train_subset, batch_size=batch_size, shuffle=True,
-        num_workers=2, persistent_workers=True
+        num_workers=2, persistent_workers=True,
+        collate_fn=collate_safe
     )
     val_loader = DataLoader(
         dataset=val_subset, batch_size=batch_size, shuffle=False,
-        num_workers=2, persistent_workers=True
+        num_workers=2, persistent_workers=True,
+        collate_fn=collate_safe
     )
     test_loader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False,
-        num_workers=2, persistent_workers=True
+        num_workers=2, persistent_workers=True,
+        collate_fn=collate_safe
     )
 
     print(f"Đã tải data (chuẩn HF ResNet-50) thành công. Tổng cộng {num_classes} lớp.")
