@@ -125,25 +125,11 @@ def get_vinfood_dataloaders_for_HuggingFace(model_name="microsoft/resnet-50", ba
         print(e)
         return None, None, None, -1
 
-    # 2. Định nghĩa phép biến đổi
-    if hasattr(processor, 'crop_size') and processor.crop_size is not None:
-        # Dùng cho ResNet: (224, 224)
-        target_size = (processor.crop_size['height'], processor.crop_size['width'])
-    elif hasattr(processor, 'size') and processor.size is not None:
-        if 'shortest_edge' in processor.size:
-            # Dùng cho ConvNext: 224 (int)
-            target_size = processor.size['shortest_edge']
-        else:
-            # Dùng cho ViT/BeIT: (224, 224)
-            target_size = (processor.size['height'], processor.size['width'])
-    else:
-        # Mặc định an toàn
-        target_size = (224, 224)
 
     # 3. Định nghĩa phép biến đổi
     data_transformer = transforms.Compose([
         transforms.Lambda(lambda img: img.convert("RGB")),
-        transforms.Resize(target_size), # <--- Dùng 'target_size' đa năng
+        transforms.Resize((224, 224)), # <--- Dùng 'target_size' đa năng
         transforms.ToTensor(),
         transforms.Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
