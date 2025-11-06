@@ -3,6 +3,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 import os
+from transformers import AutoImageProcessor
 
 # Kích thước LeNet-5 mong đợi
 LENET_IMG_SIZE = 32
@@ -92,3 +93,74 @@ def get_vinfood_dataloaders(batch_size=64, train_path=None, test_path=None, val_
 
     return train_loader, val_loader, test_loader, num_classes
 
+
+def get_vinfood_dataloaders_for_HuggingFace(model_name="microsoft/resnet-50", batch_size=32, train_path=None, test_path=None, val_split=0.2, random_state=42):
+    """
+    Hàm này tạo DataLoaders cho VinaFood21
+    SỬ DỤNG BỘ TIỀN XỬ LÝ (PROCESSOR) CỤ THỂ TỪ HUGGINGFACE.
+    """
+    
+    # 1. Tải "bộ xử lý" (processor) của model
+    # Processor này chứa mean, std, và kích thước resize (ví dụ: 224x224)
+    # mà ResNet-50 đã được huấn luyện.
+    try:
+        processor = AutoImageProcessor.from_pretrained(model_name)
+    except Exception as e:
+        print(f"Lỗi khi tải processor '{model_name}'. Bạn chắc chắn đã cài 'transformers'?")
+        print(e)
+        return None, None, None, -1
+
+    # 2. Định nghĩa phép biến đổi
+    # Chúng ta sẽ tái tạo lại transform chuẩn của processor
+    data_transformer = transforms.Compose([
+        transforms.Lambda(lambda img: img.convert("RGB")),
+        transforms.Resize((processor.size['height'], processor.size['width'])),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=processor.image_mean, std=processor.image_std)
+    ])
+    
+    # (Phần tải dataset, chia Stratified, và Dataloader giữ nguyên y hệt)
+    try:
+        full_train_dataset = datasets.ImageFolder(
+            root=train_path,
+            transform=data_transformer
+        )
+        test_dataset = datasets.ImageFolder(
+            root=test_path,
+            transform=data_transformer
+        )
+    except Exception as e:
+        print(f"Lỗi khi tải data: {e}")
+        return None, None, None, -1
+
+    all_labels = full_train_dataset.targets
+    all_indices = list(range(len(all_labels)))
+    train_indices, val_indices = train_test_split(
+        all_indices, test_size=val_split, stratify=all_labels, random_state=random_state
+    )
+    train_subset = Subset(full_train_dataset, train_indices)
+    val_subset = Subset(full_train_dataset, val_indices)
+    num_classes = len(full_train_dataset.classes)
+    
+    # Lấy 2 dictionary quan trọng
+    label2id = full_train_dataset.class_to_idx
+    id2label = {idx: label for label, idx in label2id.items()}
+
+    train_loader = DataLoader(
+        dataset=train_subset, batch_size=batch_size, shuffle=True,
+        num_workers=2, persistent_workers=True
+    )
+    val_loader = DataLoader(
+        dataset=val_subset, batch_size=batch_size, shuffle=False,
+        num_workers=2, persistent_workers=True
+    )
+    test_loader = DataLoader(
+        dataset=test_dataset, batch_size=batch_size, shuffle=False,
+        num_workers=2, persistent_workers=True
+    )
+
+    print(f"Đã tải data (chuẩn HF ResNet-50) thành công. Tổng cộng {num_classes} lớp.")
+    print(f"Train: {len(train_subset)} ảnh | Validation: {len(val_subset)} ảnh (đã chia stratified).")
+    
+    # Trả về thêm 2 dicts (label2id, id2label)
+    return train_loader, val_loader, test_loader, num_classes, label2id, id2label
