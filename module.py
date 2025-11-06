@@ -183,3 +183,115 @@ class GoogLeNet(nn.Module):
         x = self.fc(x)          # (B, num_classes)
         
         return x
+
+
+
+class BasicBlock(nn.Module):
+    """
+    Class này định nghĩa "viên gạch" ResNet cơ bản (cho ResNet-18/34).
+    """
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(BasicBlock, self).__init__()
+        
+        # --- 1. Nhánh chính (Main Path) ---
+        # [3x3 Conv -> Batch norm -> ReLU -> 3x3 Conv -> Batch norm]
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        
+        # --- 2. Nhánh tắt (Shortcut Path) ---
+        self.shortcut = nn.Sequential() # Mặc định là một "identity" (không làm gì)
+        
+        # Nếu kích thước thay đổi (stride != 1) hoặc số kênh thay đổi
+        # nhánh "x" (shortcut) phải đi qua 1x1 Conv để điều chỉnh
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        identity = self.shortcut(x) # Lưu lại 'x' (hoặc 'x' đã biến đổi)
+        
+        # Cho 'x' đi qua nhánh chính
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        
+        out = self.conv2(out)
+        out = self.bn2(out)
+        
+        # --- Phép cộng (Phép thuật của ResNet) ---
+        out += identity
+        out = self.relu(out) # ReLU *sau* khi cộng
+        
+        return out
+
+class ResNet(nn.Module):
+    """
+    Class này định nghĩa "bộ khung" ResNet.
+    """
+    def __init__(self, block, num_blocks, num_classes=21):
+        super(ResNet, self).__init__()
+        self.in_channels = 64 # Theo dõi số kênh đầu vào cho mỗi tầng
+        
+        # --- 1. Lớp "Stem" ---
+        # Input: (3, 224, 224) -> (64, 56, 56)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
+        # --- 2. Các tầng ResNet (Lắp ráp "gạch") ---
+        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
+        
+        # --- 3. Lớp "Head" ---
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # Global Average Pooling
+        self.fc = nn.Linear(512, num_classes) # ResNet-18/34 có 512 kênh ở cuối
+
+    # Hàm trợ giúp để tạo một tầng (stack) các block
+    def _make_layer(self, block, out_channels, num_blocks, stride):
+        # Block đầu tiên của tầng có thể thay đổi kích thước (stride=2)
+        # Các block còn lại stride=1
+        strides = [stride] + [1] * (num_blocks - 1)
+        
+        layers = []
+        for s in strides:
+            layers.append(block(self.in_channels, out_channels, s))
+            self.in_channels = out_channels # Cập nhật in_channels cho block tiếp theo
+            
+        return nn.Sequential(*layers) # Gói các block lại thành một "hộp"
+
+    def forward(self, x):
+        # 1. Stem
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.maxpool(out)
+        
+        # 2. Các tầng ResNet
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        
+        # 3. Head
+        out = self.avgpool(out)
+        out = torch.flatten(out, 1)
+        out = self.fc(out)
+        
+        return out
+
+# --- Hàm tiện ích để gọi ResNet-18 ---
+def ResNet18(num_classes=21):
+    """
+    Hàm này xây dựng ResNet-18 chuẩn với:
+    - Block: BasicBlock
+    - Cấu hình: [2, 2, 2, 2] (tổng cộng 8 block)
+    """
+    return ResNet(BasicBlock, [2, 2, 2, 2], num_classes)
